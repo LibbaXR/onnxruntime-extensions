@@ -33,7 +33,7 @@ def add_pre_post_processing_to_yolo(input_model_file: Path, output_model_file: P
     from onnxruntime_extensions.tools import add_pre_post_processing_to_model as add_ppp
     add_ppp.yolo_detection(input_model_file, output_model_file, "jpg", onnx_opset=19, output_as_image=output_image)
 
-def run_inference(onnx_model_file: Path, output_image: bool):
+def run_inference(onnx_model_file: Path, output_image: bool, input_file: str):
     import onnxruntime as ort
     import numpy as np
 
@@ -41,7 +41,7 @@ def run_inference(onnx_model_file: Path, output_image: bool):
     session_options = ort.SessionOptions()
     session_options.register_custom_ops_library(onnxruntime_extensions.get_library_path())
 
-    image = np.frombuffer(open(f'{os.path.dirname(os.path.dirname(os.path.realpath(__file__)))}/test/data/ppp_vision/wolves.jpg', 'rb').read(), dtype=np.uint8)
+    image = np.frombuffer(open(input_file, 'rb').read(), dtype=np.uint8)
     session = ort.InferenceSession(str(onnx_model_file), providers=providers, sess_options=session_options)
 
     # Print all output names to determine what the model provides
@@ -73,11 +73,14 @@ if __name__ == '__main__':
     "Will fisrt download the '.pt' file if it doesn't exist.\n"
     "The download and output model will be in the current working directory", 
                                      formatter_class=Formatter)
+
+    default_input_file = f'{os.path.dirname(os.path.dirname(os.path.realpath(__file__)))}/test/data/ppp_vision/wolves.jpg'
     parser.add_argument('--model', type=str, default='yolo11l', help='model to download and export')
     parser.add_argument('--output-dir', type=str, help='output directory, if not supplied will use current working directory')
     parser.add_argument('--create-e2e-model', action=argparse.BooleanOptionalAction, default=True, help='create the end to end onnx model')
     parser.add_argument('--image', action=argparse.BooleanOptionalAction, default=False, help='output an image with bounding boxes, instead of box locations')
     parser.add_argument('--run-inference', action=argparse.BooleanOptionalAction, default=False, help='test inference')
+    parser.add_argument('--input-file', type=str, default=default_input_file, help='file to run the inference on')
     args = parser.parse_args()
 
     # YOLO version. Tested with 5, 8, and 11.
@@ -87,6 +90,7 @@ if __name__ == '__main__':
     version = int(matches[0])
     onnx_e2e_model_name = Path(f"{args.model}_with_pre_post_processing.onnx")
 
+    input_file_full_path = os.path.realpath(args.input_file)
     if args.output_dir:
         os.chdir(args.output_dir)
 
@@ -99,4 +103,4 @@ if __name__ == '__main__':
 
     if args.run_inference:
         print("Testing updated model...")
-        run_inference(onnx_e2e_model_name, args.image)
+        run_inference(onnx_e2e_model_name, args.image, input_file_full_path)
