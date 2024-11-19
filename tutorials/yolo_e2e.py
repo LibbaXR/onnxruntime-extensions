@@ -1,4 +1,5 @@
 import re
+import os
 import numpy
 import argparse
 from pathlib import Path
@@ -40,7 +41,7 @@ def run_inference(onnx_model_file: Path, output_image: bool):
     session_options = ort.SessionOptions()
     session_options.register_custom_ops_library(onnxruntime_extensions.get_library_path())
 
-    image = np.frombuffer(open('./wolves.jpg', 'rb').read(), dtype=np.uint8)
+    image = np.frombuffer(open(f'{os.path.dirname(os.path.dirname(os.path.realpath(__file__)))}/test/data/ppp_vision/wolves.jpg', 'rb').read(), dtype=np.uint8)
     session = ort.InferenceSession(str(onnx_model_file), providers=providers, sess_options=session_options)
 
     # Print all output names to determine what the model provides
@@ -73,9 +74,10 @@ if __name__ == '__main__':
     "The download and output model will be in the current working directory", 
                                      formatter_class=Formatter)
     parser.add_argument('--model', type=str, default='yolo11l', help='model to download and export')
-    parser.add_argument('--output_dir', type=str, help='output directory, if not supplied will use current working directory')
-    parser.add_argument('--output_image', action='store_true', help='output an image with bounding boxes, instead of box locations')
-    parser.add_argument('--infer_only', action='store_true', help='only test inference, without creating the model')
+    parser.add_argument('--output-dir', type=str, help='output directory, if not supplied will use current working directory')
+    parser.add_argument('--create-e2e-model', action=argparse.BooleanOptionalAction, default=True, help='create the end to end onnx model')
+    parser.add_argument('--image', action=argparse.BooleanOptionalAction, default=False, help='output an image with bounding boxes, instead of box locations')
+    parser.add_argument('--run-inference', action=argparse.BooleanOptionalAction, default=False, help='test inference')
     args = parser.parse_args()
 
     # YOLO version. Tested with 5, 8, and 11.
@@ -83,14 +85,18 @@ if __name__ == '__main__':
     matches = re.findall(r"\d+", args.model)
     assert(len(matches) == 1), "Model should have only one version number in it"
     version = int(matches[0])
-
-    if not args.infer_only and not onnx_model_name.exists():
-        print("Fetching original model...")
-        get_yolo_model(version, str(onnx_model_name))
-
     onnx_e2e_model_name = Path(f"{args.model}_with_pre_post_processing.onnx")
-    if not args.infer_only:
+
+    if args.output_dir:
+        os.chdir(args.output_dir)
+
+    if args.create_e2e_model:
+        if not onnx_model_name.exists():
+            print("Fetching original model...")
+            get_yolo_model(version, str(onnx_model_name))
         print("Adding pre/post processing...")
-        add_pre_post_processing_to_yolo(onnx_model_name, onnx_e2e_model_name, args.output_image)
-    print("Testing updated model...")
-    run_inference(onnx_e2e_model_name, args.output_image)
+        add_pre_post_processing_to_yolo(onnx_model_name, onnx_e2e_model_name, args.image)
+
+    if args.run_inference:
+        print("Testing updated model...")
+        run_inference(onnx_e2e_model_name, args.image)
