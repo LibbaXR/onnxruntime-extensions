@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 import onnxruntime_extensions
 
-OUTPUT_AS_IMAGE=False
 
 def get_yolo_model(version: int, onnx_model_name: str):
     # install yolo11l
@@ -89,7 +88,7 @@ if __name__ == '__main__':
         print("Fetching original model...")
         get_yolo_model(version, str(onnx_model_name))
 
-    onnx_e2e_model_name = onnx_model_name.with_suffix(suffix=".with_pre_post_processing.onnx")
+    onnx_e2e_model_name = Path(f"{args.model}_with_pre_post_processing.onnx")
     if not args.infer_only:
         print("Adding pre/post processing...")
         add_pre_post_processing_to_yolo(onnx_model_name, onnx_e2e_model_name, args.output_image)
