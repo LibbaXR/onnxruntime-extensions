@@ -1,5 +1,7 @@
 import re
 import os
+import time
+
 import numpy
 import argparse
 from pathlib import Path
@@ -7,7 +9,7 @@ import onnxruntime_extensions
 
 
 def get_yolo_model(version: int, onnx_model_name: str):
-    # install yolo11l
+    # install yolo11n
     from pip._internal import main as pipmain
     try:
         import ultralytics
@@ -46,13 +48,17 @@ def run_inference(onnx_model_file: Path, output_image: bool, input_file: str):
 
     # Print all output names to determine what the model provides
     output_names = [output.name for output in session.get_outputs()]
-    print(f"Model output names: {output_names}")
+    #print(f"Model output names: {output_names}")
 
     inname = [i.name for i in session.get_inputs()]
     inp = {inname[0]: image}
 
+    start_time = time.perf_counter()
     # Run inference using the dynamically determined output names
     output = session.run(output_names, inp)
+    end_time = time.perf_counter()
+    elapsed = end_time - start_time
+    print(f"inference time is {elapsed:.6f}")
 
     if output_image:
         # Assuming you want to work with the first output
@@ -75,7 +81,7 @@ if __name__ == '__main__':
                                      formatter_class=Formatter)
 
     default_input_file = f'{os.path.dirname(os.path.dirname(os.path.realpath(__file__)))}/test/data/ppp_vision/wolves.jpg'
-    parser.add_argument('--model', type=str, default='yolo11l', help='model to download and export')
+    parser.add_argument('--model', type=str, default='yolo11n', help='model to download and export')
     parser.add_argument('--output-dir', type=str, help='output directory, if not supplied will use current working directory')
     parser.add_argument('--create-e2e-model', action=argparse.BooleanOptionalAction, default=True, help='create the end to end onnx model')
     parser.add_argument('--image', action=argparse.BooleanOptionalAction, default=False, help='output an image with bounding boxes, instead of box locations')
@@ -102,5 +108,5 @@ if __name__ == '__main__':
         add_pre_post_processing_to_yolo(onnx_model_name, onnx_e2e_model_name, args.image)
 
     if args.run_inference:
-        print("Testing updated model...")
+        print(f"Testing updated model {onnx_e2e_model_name}...")
         run_inference(onnx_e2e_model_name, args.image, input_file_full_path)
