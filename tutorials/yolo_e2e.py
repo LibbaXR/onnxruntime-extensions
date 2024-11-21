@@ -90,23 +90,23 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # YOLO version. Tested with 5, 8, and 11.
-    onnx_model_name = Path(f"./{args.model}.onnx")
+    onnx_model_path = Path(f"./{args.model}.onnx")
     matches = re.findall(r"\d+", args.model)
     assert(len(matches) == 1), "Model should have only one version number in it"
     version = int(matches[0])
-    onnx_e2e_model_name = Path(f"{args.model}_with_pre_post_processing.onnx")
+    onnx_e2e_model_path = Path(f"{args.model}_with_pre_post_processing.onnx")
 
     input_file_full_path = os.path.realpath(args.input_file)
     if args.output_dir:
         os.chdir(args.output_dir)
 
     if args.create_e2e_model:
-        if not onnx_model_name.exists():
+        if not onnx_model_path.exists():
             print("Fetching original model...")
-            get_yolo_model(version, str(onnx_model_name))
+            get_yolo_model(version, str(onnx_model_path))
         print("Adding pre/post processing...")
-        add_pre_post_processing_to_yolo(onnx_model_name, onnx_e2e_model_name, args.image)
+        add_pre_post_processing_to_yolo(onnx_model_path, onnx_e2e_model_path, args.image)
 
     if args.run_inference:
-        print(f"Testing updated model {onnx_e2e_model_name}...")
-        run_inference(onnx_e2e_model_name, args.image, input_file_full_path)
+        print(f"Testing updated model file {os.path.realpath(onnx_e2e_model_path)}")
+        run_inference(onnx_e2e_model_path, args.image, input_file_full_path)
